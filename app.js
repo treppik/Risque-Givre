@@ -387,7 +387,7 @@ function displayFiveDayForecast(data) {
       bgColor = "#fff0e6";
     } else if (riskLevel === 3) {
       icon = "⚠️❄️❄️";
-      riskText = "Risque très élevé";
+      riskText = "Risque très important";
       bgColor = "#ffe6e6";
     }
 
@@ -441,7 +441,7 @@ function evaluateDayRisk(forecast) {
       item.data.next_1_hours?.details?.cloud_area_fraction ??
       data.cloud_area_fraction;
 
-    // Niveau 3 : Risque très élevé
+    // Niveau 3 : Risque très important
     if (
       adjustedTemp <= 0 &&
       dewPoint >= adjustedTemp - 1 &&
@@ -585,7 +585,7 @@ function assessFrostRisk(forecast, cityName) {
       bgColor = "#e6e6fa";
       break;
     case 3:
-      riskMessage = `<span style="color: darkred; font-weight: bold;">⚠️❄️❄️ OUI : ALERTE GIVRE ❄️❄️⚠️<br><br>Risque très élevé de givre à ${cityName}<br></span>`;
+      riskMessage = `<span style="color: darkred; font-weight: bold;">⚠️❄️❄️ OUI : ALERTE GIVRE ❄️❄️⚠️<br><br>Risque très important de givre à ${cityName}<br></span>`;
       bgColor = "#ffcccc";
       break;
   }
