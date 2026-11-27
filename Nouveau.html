@@ -182,32 +182,42 @@ function showMessage(text) {
 function onPosition(position) {
   const lat = position.coords.latitude;
   const lon = position.coords.longitude;
+
+  const m = document.getElementById("message");
+  if (m) m.textContent = "Récupération des données météo…";
+
+  // Le nom de la ville arrive quand il arrive, sans bloquer la météo
   getCityName(lat, lon, function (city) {
     state.city = city;
     document.getElementById("place").textContent = "📍 " + city;
-    const url = "https://api.met.no/weatherapi/locationforecast/2.0/compact?lat=" +
-      lat.toFixed(4) + "&lon=" + lon.toFixed(4);
-    fetch(url)
-      .then(function (r) {
-        if (!r.ok) throw new Error("service météo indisponible (" + r.status + ")");
-        return r.json();
-      })
-      .then(processWeather)
-      .catch(function (err) {
-        showMessage("⚠️ Erreur météo : " + err.message);
-      });
   });
+
+  const url = "https://api.met.no/weatherapi/locationforecast/2.0/compact?lat=" +
+    lat.toFixed(4) + "&lon=" + lon.toFixed(4);
+  fetch(url)
+    .then(function (r) {
+      if (!r.ok) throw new Error("service météo indisponible (" + r.status + ")");
+      return r.json();
+    })
+    .then(processWeather)
+    .catch(function (err) {
+      showMessage("⚠️ Erreur météo : " + err.message);
+    });
 }
 
 function getCityName(lat, lon, callback) {
   const url = "https://nominatim.openstreetmap.org/reverse?lat=" + lat + "&lon=" + lon + "&format=json&zoom=10";
-  fetch(url)
+  const ctrl = new AbortController();
+  const timer = setTimeout(function () { ctrl.abort(); }, 5000);
+  fetch(url, { signal: ctrl.signal })
     .then(function (r) { return r.json(); })
     .then(function (d) {
+      clearTimeout(timer);
       const a = (d && d.address) || {};
       callback(a.city || a.town || a.village || a.municipality || "Votre position");
     })
-    .catch(function () { callback("Votre position"); });
+    .catch(function () { clearTimeout(timer); callback("Votre position"); });
+}
 }
 
 // ---------- Données météo ----------
