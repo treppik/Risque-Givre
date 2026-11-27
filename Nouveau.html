@@ -3,67 +3,69 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#2b3a4f">
+<meta name="theme-color" content="#e8e4dd">
 <title>Risque de givre</title>
 <style>
-  :root {
-    --bg1: #3a4a60; --bg2: #26323f; --accent: #ffffff;
-  }
-  body[data-level="0"] { --bg1: #f8e3a3; --bg2: #efc673; }
-  body[data-level="1"] { --bg1: #86a8e6; --bg2: #5273b8; }
-  body[data-level="2"] { --bg1: #a893d6; --bg2: #6f5aa8; }
-  body[data-level="3"] { --bg1: #e58a7b; --bg2: #aa4d47; }
-
   * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
   html, body { min-height: 100%; }
   body {
     font-family: -apple-system, "SF Pro Display", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    color: #fff;
-    background: linear-gradient(160deg, var(--bg1), var(--bg2)) fixed;
-    transition: background 0.6s ease;
+    color: #2f3a46;
+    background: #e8e4dd;
     padding: env(safe-area-inset-top) 20px env(safe-area-inset-bottom);
   }
-  body[data-level="0"] { color: #4a3a15; }
 
   .app { max-width: 460px; margin: 0 auto; padding: 24px 0 40px; }
 
   header { text-align: center; }
-  .place { font-size: 20px; opacity: 0.9; letter-spacing: 0.02em; min-height: 26px; }
+  .credit { font-size: 12px; line-height: 1.4; opacity: 0.65; }
 
   .env-btn {
     display: flex; align-items: center; justify-content: center; gap: 8px;
     margin: 14px auto 0; padding: 10px 18px;
-    background: rgba(255,255,255,0.22); border: 1px solid rgba(255,255,255,0.35);
+    background: rgba(255,255,255,0.65); border: 1px solid rgba(47,58,70,0.15);
     border-radius: 999px; color: inherit; font-size: 15px; font-family: inherit; cursor: pointer;
-    backdrop-filter: blur(8px);
   }
   .env-btn b { font-weight: 600; }
-  .env-btn .chev { opacity: 0.7; font-size: 18px; line-height: 1; }
+  .env-btn .chev { opacity: 0.6; font-size: 18px; line-height: 1; }
 
-  .hero { text-align: center; padding: 40px 8px 28px; }
+  /* Zone du verdict : seule partie colorée */
+  .hero {
+    margin-top: 20px; text-align: center; padding: 36px 16px 30px;
+    border-radius: 28px; color: #fff;
+    background: linear-gradient(160deg, #3a4a60, #26323f);
+    box-shadow: 0 6px 20px rgba(47,58,70,0.15);
+    transition: background 0.6s ease;
+  }
+  .hero[data-level="0"] { background: linear-gradient(160deg, #f8e3a3, #efc673); color: #4a3a15; }
+  .hero[data-level="1"] { background: linear-gradient(160deg, #86a8e6, #5273b8); }
+  .hero[data-level="2"] { background: linear-gradient(160deg, #a893d6, #6f5aa8); }
+  .hero[data-level="3"] { background: linear-gradient(160deg, #e58a7b, #aa4d47); }
+
   .icon { height: 96px; max-width: 100%; margin: 0 auto 24px; display: block; }
   .when { font-size: 19px; opacity: 0.85; margin-bottom: 8px; }
   .when::first-letter { text-transform: uppercase; }
   .verdict { font-size: 32px; font-weight: 600; line-height: 1.15; letter-spacing: -0.01em; }
-  .credit { margin-top: 16px; font-size: 12px; line-height: 1.4; opacity: 0.7; }
+  .place { margin-top: 16px; font-size: 20px; opacity: 0.9; letter-spacing: 0.02em; min-height: 26px; }
 
-  .cards { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 8px; }
+  .cards { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 20px; }
   .card {
-    background: rgba(255,255,255,0.18); border-radius: 20px; padding: 16px 18px;
-    backdrop-filter: blur(10px);
+    background: rgba(255,255,255,0.65); border-radius: 20px; padding: 16px 18px;
+    box-shadow: 0 1px 4px rgba(47,58,70,0.06);
   }
-  .card .label { font-size: 13px; opacity: 0.75; }
+  .card .label { font-size: 13px; opacity: 0.7; }
   .card .value { font-size: 26px; font-weight: 600; margin-top: 4px; }
-  .card-title { grid-column: 1 / -1; font-size: 13px; opacity: 0.75; margin: 4px 4px 0; }
+  .card-title { grid-column: 1 / -1; font-size: 13px; opacity: 0.7; margin: 4px 4px 0; }
 
   .strip {
-    margin-top: 12px; background: rgba(255,255,255,0.18); border-radius: 20px;
-    padding: 16px 18px; display: flex; justify-content: space-between; backdrop-filter: blur(10px);
+    margin-top: 12px; background: rgba(255,255,255,0.65); border-radius: 20px;
+    padding: 16px 18px; display: flex; justify-content: space-between;
+    box-shadow: 0 1px 4px rgba(47,58,70,0.06);
   }
   .strip div { text-align: center; font-size: 13px; }
   .strip b { display: block; font-size: 17px; font-weight: 600; margin-top: 4px; }
 
-  .days-title { font-size: 13px; opacity: 0.75; margin: 28px 4px 8px; }
+  .days-title { font-size: 13px; opacity: 0.7; margin: 28px 4px 8px; }
   .days { display: flex; flex-direction: column; gap: 8px; }
   .day {
     display: flex; align-items: center; gap: 12px;
@@ -103,10 +105,10 @@
   .opt.selected { border-color: #4b6cf0; background: #f1f4ff; }
 </style>
 </head>
-<body data-level="none">
+<body>
 <div class="app">
   <header>
-    <div class="place" id="place"></div>
+    <div class="credit">Votre surveillance givre propulsée par J. KIPPERT</div>
     <button class="env-btn" id="envBtn" aria-label="Choisir votre environnement">
       <span>Mon environnement : <b id="envLabel">zone boisée</b></span>
       <span class="chev">›</span>
@@ -190,7 +192,8 @@ function onPosition(position) {
   // Le nom de la ville arrive quand il arrive, sans bloquer la météo
   getCityName(lat, lon, function (city) {
     state.city = city;
-    document.getElementById("place").textContent = "📍 " + city;
+    const p = document.getElementById("place");
+    if (p) p.textContent = "📍 " + city;
   });
 
   const url = "https://api.met.no/weatherapi/locationforecast/2.0/compact?lat=" +
@@ -384,8 +387,6 @@ function render() {
   const forecast = tomorrow.forecast;
   const risk = assessRisk(forecast);
 
-  document.body.setAttribute("data-level", risk.level);
-
   const target = new Date(tomorrow.date); target.setHours(6, 0, 0, 0);
   const at6 = forecast.reduce(function (p, c) {
     return Math.abs(new Date(p.time) - target) < Math.abs(new Date(c.time) - target) ? p : c;
@@ -414,12 +415,14 @@ function render() {
     ? '<div class="days-title">Les jours suivants</div><div class="days">' + daysHtml + "</div>"
     : "";
 
+  const placeText = state.city ? "📍 " + state.city : "";
+
   document.getElementById("content").innerHTML =
-    '<div class="hero">' +
+    '<div class="hero" data-level="' + risk.level + '">' +
       iconSvg(risk.level) +
       '<div class="when">' + dateText + " au matin</div>" +
       '<div class="verdict">' + VERDICTS[risk.level] + "</div>" +
-      '<div class="credit">Votre surveillance givre propulsée par J. KIPPERT</div>' +
+      '<div class="place" id="place">' + placeText + "</div>" +
     "</div>" +
     '<div class="cards">' +
       '<div class="card-title">Prévision vers 6h</div>' +
