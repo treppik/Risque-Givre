@@ -143,6 +143,7 @@ const ENVIRONMENTS = {
   rural:   { name: "Zone rurale",  short: "zone rurale",  temp: -1.0, hum: 0  }
 };
 
+// Environnement par défaut (l'ancien site démarrait en "wooded")
 let currentEnv = "general";
 try {
   const saved = localStorage.getItem("givre_env");
@@ -164,9 +165,13 @@ window.addEventListener("load", function () {
     showMessage("La géolocalisation n'est pas supportée par votre navigateur.");
     return;
   }
-  navigator.geolocation.getCurrentPosition(onPosition, function () {
-    showMessage("⚠️ Impossible de récupérer votre position. Vérifiez que la localisation est autorisée, puis rechargez la page.");
-  }, { timeout: 15000, maximumAge: 600000 });
+  navigator.geolocation.getCurrentPosition(onPosition, function (err) {
+    let msg = "⚠️ Impossible de récupérer votre position.";
+    if (err && err.code === 1) msg = "⚠️ Localisation refusée. Activez-la dans les réglages, puis rechargez la page.";
+    if (err && err.code === 2) msg = "⚠️ Position indisponible. Vérifiez votre GPS.";
+    if (err && err.code === 3) msg = "⚠️ Temps d'attente dépassé. Rechargez la page.";
+    showMessage(msg);
+  }, { enableHighAccuracy: false, timeout: 30000, maximumAge: 60000 });
 });
 
 function showMessage(text) {
@@ -194,7 +199,7 @@ function onPosition(position) {
 }
 
 function getCityName(lat, lon, callback) {
-  const url = "https://nominatim.openstreetmap.org/reverse?lat=" + lat + "&lon=" + lon + "&format=json";
+  const url = "https://nominatim.openstreetmap.org/reverse?lat=" + lat + "&lon=" + lon + "&format=json&zoom=10";
   fetch(url)
     .then(function (r) { return r.json(); })
     .then(function (d) {
@@ -225,30 +230,16 @@ function processWeather(data) {
     day.setDate(day.getDate() + i);
     day.setHours(0, 0, 0, 0);
 
-    const ofDay = series.filter(function (item) {
-      return sameDay(new Date(item.time), day);
-    });
-
-    // Fin de nuit : entre 2h et 7h
-    let night = ofDay.filter(function (item) {
-      const h = new Date(item.time).getHours();
-      return h >= 2 && h <= 7;
-    });
-
-    // Pour les jours lointains, les prévisions sont moins fréquentes : on élargit un peu
-    if (!night.length && i > 1) {
-      night = ofDay.filter(function (item) {
-        const h = new Date(item.time).getHours();
-        return h >= 0 && h <= 9;
-      });
-    }
-
-    night.sort(function (a, b) { return new Date(a.time) - new Date(b.time); });
+    // Fin de nuit : entre 2h et 8h (comme l'ancien site)
+    const night = series.filter(function (item) {
+      const d = new Date(item.time);
+      return sameDay(d, day) && d.getHours() >= 2 && d.getHours() <= 8;
+    }).sort(function (a, b) { return new Date(a.time) - new Date(b.time); });
 
     if (night.length) {
       days.push({ date: day, forecast: night });
     } else if (i === 1) {
-      showMessage("⚠️ Aucune prévision disponible entre 2h et 7h.");
+      showMessage("⚠️ Aucune prévision disponible pour demain matin.");
       return;
     }
   }
@@ -257,12 +248,17 @@ function processWeather(data) {
   render();
 }
 
-// ---------- Évaluation du risque (même logique qu'avant) ----------
+// ---------- Évaluation du risque (même logique que l'ancien site : point de rosée + nuages) ----------
+function cloudOf(item) {
+  const d = item.data.instant.details;
+  const n1 = item.data.next_1_hours && item.data.next_1_hours.details
+    ? item.data.next_1_hours.details.cloud_area_fraction : undefined;
+  return n1 !== undefined && n1 !== null ? n1 : d.cloud_area_fraction;
+}
+
 function assessRisk(forecast) {
   const env = ENVIRONMENTS[currentEnv];
   let level = 0;
-  let criticalTime = null;
-  let minTemp = 100, maxHum = 0, minWind = 100;
 
   forecast.forEach(function (item) {
     const d = item.data.instant.details;
@@ -270,32 +266,35 @@ function assessRisk(forecast) {
     const hum = Math.min(100, d.relative_humidity + env.hum);
     const wind = d.wind_speed * 3.6;
 
-    if (temp < minTemp) minTemp = temp;
-    if (hum > maxHum) maxHum = hum;
-    if (wind < minWind) minWind = wind;
+    // Point de rosée (formule de Magnus)
+    const b = 17.27, c = 237.7;
+    const alpha = (b * temp) / (c + temp) + Math.log(hum / 100);
+    const dew = (c * alpha) / (b - alpha);
 
-    if (temp < 0 && hum > 80) {
-      level = 3; criticalTime = item.time;
-    } else if (temp < 1) {
-      if (level < 2) { level = 2; criticalTime = item.time; }
-    } else if (temp <= 3 && hum >= 80 && wind <= 15) {
-      if (level < 1) { level = 1; criticalTime = item.time; }
+    const cloud = cloudOf(item);
+
+    if (temp <= 0 && dew >= temp - 1 && (cloud === undefined || cloud < 30)) {
+      level = 3;
+    } else if (temp <= 1 && dew >= temp - 2 && (cloud === undefined || cloud < 50)) {
+      level = Math.max(level, 2);
+    } else if (temp <= 2.5 && dew >= temp - 2 && wind <= 10 && (cloud === undefined || cloud < 70)) {
+      level = Math.max(level, 1);
     }
   });
-  return { level: level, minTemp: minTemp, maxHum: maxHum, minWind: minWind, criticalTime: criticalTime };
+  return { level: level };
 }
 
 // ---------- Affichage ----------
 const VERDICTS = {
   0: "Pas de risque de givre",
-  1: "Givre possible",
+  1: "Risque potentiel de givre",
   2: "Risque important de givre",
   3: "Alerte givre"
 };
 
 const LEVEL_LABELS = {
   0: "pas de risque",
-  1: "givre possible",
+  1: "risque potentiel",
   2: "risque important",
   3: "alerte givre"
 };
@@ -357,7 +356,6 @@ function render() {
   const tomorrow = state.days[0];
   const forecast = tomorrow.forecast;
   const risk = assessRisk(forecast);
-  const env = ENVIRONMENTS[currentEnv];
 
   document.body.setAttribute("data-level", risk.level);
 
@@ -367,15 +365,17 @@ function render() {
     return Math.abs(new Date(p.time) - target) < Math.abs(new Date(c.time) - target) ? p : c;
   });
   const d6 = at6.data.instant.details;
-  const cloud = d6.cloud_area_fraction !== undefined ? Math.round(d6.cloud_area_fraction) + "%" : "–";
+  const c6 = cloudOf(at6);
+  const cloud = c6 !== undefined ? Math.round(c6) + "%" : "–";
 
   const advice = risk.level === 0
     ? "Rien de particulier à prévoir pour votre pare-brise et vos plantes."
     : "Pensez à protéger votre pare-brise et vos plantes.";
 
+  // Valeurs brutes de la prévision (comme l'ancien site)
   let strip = "";
   forecast.forEach(function (item) {
-    const t = item.data.instant.details.air_temperature + env.temp;
+    const t = item.data.instant.details.air_temperature;
     strip += "<div>" + fmtHour(item.time) + "<b>" + t.toFixed(0) + "°</b></div>";
   });
 
@@ -401,8 +401,8 @@ function render() {
     "</div>" +
     '<div class="cards">' +
       '<div class="card-title">Prévision vers 6h</div>' +
-      '<div class="card"><div class="label">Température</div><div class="value">' + (d6.air_temperature + env.temp).toFixed(1) + "°C</div></div>" +
-      '<div class="card"><div class="label">Humidité</div><div class="value">' + Math.min(100, Math.round(d6.relative_humidity + env.hum)) + "%</div></div>" +
+      '<div class="card"><div class="label">Température</div><div class="value">' + d6.air_temperature.toFixed(1) + "°C</div></div>" +
+      '<div class="card"><div class="label">Humidité</div><div class="value">' + Math.round(d6.relative_humidity) + "%</div></div>" +
       '<div class="card"><div class="label">Vent</div><div class="value">' + Math.round(d6.wind_speed * 3.6) + " km/h</div></div>" +
       '<div class="card"><div class="label">Nuages</div><div class="value">' + cloud + "</div></div>" +
     "</div>" +
