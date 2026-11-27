@@ -63,7 +63,6 @@
   .strip div { text-align: center; font-size: 13px; }
   .strip b { display: block; font-size: 17px; font-weight: 600; margin-top: 4px; }
 
-  /* Prévision des jours suivants : une pastille de couleur par jour */
   .days-title { font-size: 13px; opacity: 0.75; margin: 28px 4px 8px; }
   .days { display: flex; flex-direction: column; gap: 8px; }
   .day {
@@ -82,7 +81,6 @@
   .status { text-align: center; padding: 100px 20px; font-size: 18px; opacity: 0.9; }
   .source { text-align: center; font-size: 11px; opacity: 0.6; margin-top: 28px; }
 
-  /* Panneau de réglages */
   .overlay {
     position: fixed; inset: 0; background: rgba(0,0,0,0.4); opacity: 0; pointer-events: none;
     transition: opacity 0.3s;
@@ -133,8 +131,13 @@
 </div>
 
 <script>
+// Affiche à l'écran toute erreur de script (au lieu d'une page figée)
+window.addEventListener("error", function (e) {
+  var c = document.getElementById("content");
+  if (c) c.innerHTML = '<div class="status">⚠️ Erreur : ' + e.message + "</div>";
+});
+
 // ---------- Réglages ----------
-// Nombre de jours affichés dans la liste, après demain (6 = 7 matins au total)
 const NB_JOURS_SUIVANTS = 6;
 
 const ENVIRONMENTS = {
@@ -144,14 +147,12 @@ const ENVIRONMENTS = {
   rural:   { name: "Zone rurale",  short: "zone rurale",  temp: -1.0, hum: 0  }
 };
 
-// Environnement par défaut (si aucun choix n'a été mémorisé)
 let currentEnv = "wooded";
 try {
   const saved = localStorage.getItem("givre_env");
   if (saved && ENVIRONMENTS[saved]) currentEnv = saved;
 } catch (e) {}
 
-// state.days : un élément par matin (index 0 = demain)
 let state = { days: [], city: "" };
 
 function updatePill() {
@@ -162,6 +163,7 @@ function updatePill() {
 window.addEventListener("load", function () {
   setupSheet();
   updatePill();
+  showMessage("Localisation en cours…");
   if (!navigator.geolocation) {
     showMessage("La géolocalisation n'est pas supportée par votre navigateur.");
     return;
@@ -183,8 +185,7 @@ function onPosition(position) {
   const lat = position.coords.latitude;
   const lon = position.coords.longitude;
 
-  const m = document.getElementById("message");
-  if (m) m.textContent = "Récupération des données météo…";
+  showMessage("Récupération des données météo…");
 
   // Le nom de la ville arrive quand il arrive, sans bloquer la météo
   getCityName(lat, lon, function (city) {
@@ -218,7 +219,6 @@ function getCityName(lat, lon, callback) {
     })
     .catch(function () { clearTimeout(timer); callback("Votre position"); });
 }
-}
 
 // ---------- Données météo ----------
 function sameDay(a, b) {
@@ -241,7 +241,6 @@ function processWeather(data) {
     day.setDate(day.getDate() + i);
     day.setHours(0, 0, 0, 0);
 
-    // Fin de nuit : entre 2h et 8h (comme l'ancien site)
     const night = series.filter(function (item) {
       const d = new Date(item.time);
       return sameDay(d, day) && d.getHours() >= 2 && d.getHours() <= 8;
@@ -277,7 +276,6 @@ function assessRisk(forecast) {
     const hum = Math.min(100, d.relative_humidity + env.hum);
     const wind = d.wind_speed * 3.6;
 
-    // Point de rosée (formule de Magnus)
     const b = 17.27, c = 237.7;
     const alpha = (b * temp) / (c + temp) + Math.log(hum / 100);
     const dew = (c * alpha) / (b - alpha);
@@ -321,7 +319,6 @@ function iconSvg(level) {
     '<path d="M40 16l8 8 8-8M40 80l8-8 8 8M12 40l11 3-3 11M84 56l-11-3 3-11M12 56l11-3-3-11M84 40l-11 3 3 11" stroke-width="4"/></svg>';
 }
 
-// Petits pictogrammes pour la liste des jours
 function flake(x) {
   return '<g transform="translate(' + x + ' 0)">' +
     '<path d="M12 3v18M4.2 7.5l15.6 9M4.2 16.5l15.6-9M9 5l3 3 3-3M9 19l3-3 3 3"/></g>';
@@ -343,7 +340,6 @@ function dayIcon(level) {
   if (level === 2) {
     return open(52) + flake(0) + flake(28) + "</svg>";
   }
-  // Alerte : deux flocons + panneau danger
   return open(86) + flake(0) + flake(28) +
     '<path d="M71 3L84 22H58Z"/>' +
     '<path d="M71 10v6"/><path d="M71 19.2h.01"/></svg>';
@@ -354,7 +350,6 @@ function fmtHour(iso) {
   return d.getHours() + "h";
 }
 
-// Format "lundi 30/11"
 function fmtDay(d) {
   const w = d.toLocaleDateString("fr-FR", { weekday: "long" });
   const dd = String(d.getDate()).padStart(2, "0");
@@ -370,7 +365,6 @@ function render() {
 
   document.body.setAttribute("data-level", risk.level);
 
-  // Prévision la plus proche de 6h
   const target = new Date(tomorrow.date); target.setHours(6, 0, 0, 0);
   const at6 = forecast.reduce(function (p, c) {
     return Math.abs(new Date(p.time) - target) < Math.abs(new Date(c.time) - target) ? p : c;
@@ -383,7 +377,6 @@ function render() {
     ? "Rien de particulier à prévoir pour votre pare-brise et vos plantes."
     : "Pensez à protéger votre pare-brise et vos plantes.";
 
-  // Valeurs brutes de la prévision
   let strip = "";
   forecast.forEach(function (item) {
     const t = item.data.instant.details.air_temperature;
@@ -392,7 +385,6 @@ function render() {
 
   const dateText = tomorrow.date.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" });
 
-  // Liste des jours suivants : date, icône, puis risque en toutes lettres à droite
   let daysHtml = "";
   for (let i = 1; i < state.days.length; i++) {
     const r = assessRisk(state.days[i].forecast);
