@@ -63,17 +63,19 @@
   .strip div { text-align: center; font-size: 13px; }
   .strip b { display: block; font-size: 17px; font-weight: 600; margin-top: 4px; }
 
-  /* Prévision des jours suivants */
+  /* Prévision des jours suivants : une pastille de couleur par jour */
   .days-title { font-size: 13px; opacity: 0.75; margin: 28px 4px 8px; }
-  .days {
-    background: rgba(255,255,255,0.18); border-radius: 20px; padding: 4px 18px;
-    backdrop-filter: blur(10px);
-  }
+  .days { display: flex; flex-direction: column; gap: 8px; }
   .day {
     display: flex; justify-content: space-between; align-items: center;
-    padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.2); font-size: 17px;
+    padding: 12px 18px; border-radius: 16px; font-size: 17px;
+    color: #fff; border: 1px solid rgba(255,255,255,0.55);
+    box-shadow: 0 2px 6px rgba(0,0,0,0.12);
   }
-  .day:last-child { border-bottom: none; }
+  .day[data-level="0"] { background: linear-gradient(135deg, #f6d365, #e9a23b); color: #3a2a05; border-color: rgba(58,42,5,0.25); }
+  .day[data-level="1"] { background: linear-gradient(135deg, #5b8def, #2c4a9a); }
+  .day[data-level="2"] { background: linear-gradient(135deg, #8e6bd8, #4b2f8f); }
+  .day[data-level="3"] { background: linear-gradient(135deg, #e5533d, #8f1d1d); }
   .day svg { display: block; }
 
   .status { text-align: center; padding: 100px 20px; font-size: 18px; opacity: 0.9; }
@@ -379,11 +381,12 @@ function render() {
 
   const dateText = tomorrow.date.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" });
 
-  // Liste des jours suivants
+  // Liste des jours suivants (une couleur par niveau de risque)
   let daysHtml = "";
   for (let i = 1; i < state.days.length; i++) {
     const r = assessRisk(state.days[i].forecast);
-    daysHtml += '<div class="day"><span>' + fmtDay(state.days[i].date) + "</span>" + dayIcon(r.level) + "</div>";
+    daysHtml += '<div class="day" data-level="' + r.level + '"><span>' +
+      fmtDay(state.days[i].date) + "</span>" + dayIcon(r.level) + "</div>";
   }
   const daysBlock = daysHtml
     ? '<div class="days-title">Les jours suivants</div><div class="days">' + daysHtml + "</div>"
