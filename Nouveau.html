@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1e2a3a">
+<title>Risque de givre</title>
+<style>
+  :root {
+    --bg1: #2b3a4f; --bg2: #1c2633; --accent: #ffffff;
+  }
+  body[data-level="0"] { --bg1: #f6d365; --bg2: #e9a23b; }
+  body[data-level="1"] { --bg1: #5b8def; --bg2: #2c4a9a; }
+  body[data-level="2"] { --bg1: #8e6bd8; --bg2: #4b2f8f; }
+  body[data-level="3"] { --bg1: #e5533d; --bg2: #8f1d1d; }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body { min-height: 100%; }
+  body {
+    font-family: -apple-system, "SF Pro Display", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: #fff;
+    background: linear-gradient(160deg, var(--bg1), var(--bg2)) fixed;
+    transition: background 0.6s ease;
+    padding: env(safe-area-inset-top) 20px env(safe-area-inset-bottom);
+  }
+  body[data-level="0"] { color: #3a2a05; }
+
+  .app { max-width: 460px; margin: 0 auto; padding: 24px 0 40px; }
+
+  header { display: flex; justify-content: space-between; align-items: center; }
+  .place { font-size: 15px; opacity: 0.85; letter-spacing: 0.02em; }
+  .gear {
+    background: rgba(255,255,255,0.2); border: none; color: inherit;
+    width: 40px; height: 40px; border-radius: 50%; font-size: 18px; cursor: pointer;
+    backdrop-filter: blur(8px);
+  }
+
+  .hero { text-align: center; padding: 48px 8px 28px; }
+  .icon { width: 96px; height: 96px; margin: 0 auto 24px; display: block; }
+  .when { font-size: 14px; opacity: 0.8; text-transform: capitalize; margin-bottom: 8px; }
+  .verdict { font-size: 32px; font-weight: 600; line-height: 1.15; letter-spacing: -0.01em; }
+  .advice { margin-top: 16px; font-size: 17px; line-height: 1.4; opacity: 0.95; }
+  .env-note { margin-top: 12px; font-size: 13px; opacity: 0.75; }
+
+  .cards { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 8px; }
+  .card {
+    background: rgba(255,255,255,0.18); border-radius: 20px; padding: 16px 18px;
+    backdrop-filter: blur(10px);
+  }
+  .card .label { font-size: 13px; opacity: 0.75; }
+  .card .value { font-size: 26px; font-weight: 600; margin-top: 4px; }
+  .card-title { grid-column: 1 / -1; font-size: 13px; opacity: 0.75; margin: 4px 4px 0; }
+
+  .strip {
+    margin-top: 12px; background: rgba(255,255,255,0.18); border-radius: 20px;
+    padding: 16px 18px; display: flex; justify-content: space-between; backdrop-filter: blur(10px);
+  }
+  .strip div { text-align: center; font-size: 13px; }
+  .strip b { display: block; font-size: 17px; font-weight: 600; margin-top: 4px; }
+
+  .status { text-align: center; padding: 120px 20px; font-size: 18px; opacity: 0.9; }
+  .source { text-align: center; font-size: 11px; opacity: 0.6; margin-top: 28px; }
+
+  /* Panneau de réglages */
+  .overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.4); opacity: 0; pointer-events: none;
+    transition: opacity 0.3s;
+  }
+  .overlay.open { opacity: 1; pointer-events: auto; }
+  .sheet {
+    position: fixed; left: 0; right: 0; bottom: 0; background: #fff; color: #222;
+    border-radius: 28px 28px 0 0; padding: 24px 20px calc(28px + env(safe-area-inset-bottom));
+    transform: translateY(100%); transition: transform 0.35s ease; max-width: 460px; margin: 0 auto;
+  }
+  .sheet.open { transform: translateY(0); }
+  .sheet h2 { font-size: 20px; margin-bottom: 6px; }
+  .sheet p { font-size: 14px; color: #666; margin-bottom: 16px; line-height: 1.4; }
+  .opt {
+    display: block; width: 100%; text-align: left; padding: 14px 16px; margin-bottom: 8px;
+    border: 2px solid #e5e5ea; border-radius: 14px; background: #fff; font-size: 16px; color: #222; cursor: pointer;
+  }
+  .opt small { display: block; color: #888; font-size: 13px; margin-top: 2px; }
+  .opt.selected { border-color: #4b6cf0; background: #f1f4ff; }
+</style>
+</head>
+<body data-level="none">
+<div class="app">
+  <header>
+    <div class="place" id="place"></div>
+    <button class="gear" id="gear" aria-label="Réglages">⚙️</button>
+  </header>
+
+  <div id="content">
+    <div class="status" id="message">Analyse du risque de givre en cours…</div>
+  </div>
+
+  <div class="source">Données météo : MET Norway</div>
+</div>
+
+<div class="overlay" id="overlay"></div>
+<div class="sheet" id="sheet">
+  <h2>Votre environnement</h2>
+  <p>Le givre se forme plus facilement selon l'endroit où vous habitez. Choisissez ce qui correspond le mieux à votre zone.</p>
+  <button class="opt" data-env="general">Général<small>Aucun ajustement</small></button>
+  <button class="opt" data-env="wooded">Zone boisée<small>Plus frais et plus humide</small></button>
+  <button class="opt" data-env="urban">Zone urbaine<small>Plus doux et plus sec</small></button>
+  <button class="opt" data-env="rural">Zone rurale<small>Un peu plus frais</small></button>
+</div>
+
+<script>
+// ---------- Réglages ----------
+const ENVIRONMENTS = {
+  general: { name: "Général",      temp: 0,    hum: 0  },
+  wooded:  { name: "Zone boisée",  temp: -1.5, hum: 5  },
+  urban:   { name: "Zone urbaine", temp: 0.5,  hum: -5 },
+  rural:   { name: "Zone rurale",  temp: -1.0, hum: 0  }
+};
+
+let currentEnv = "general";
+try {
+  const saved = localStorage.getItem("givre_env");
+  if (saved && ENVIRONMENTS[saved]) currentEnv = saved;
+} catch (e) {}
+
+let state = { forecast: null, city: "", date: "" };
+
+// ---------- Démarrage ----------
+window.addEventListener("load", function () {
+  setupSheet();
+  if (!navigator.geolocation) {
+    showMessage("La géolocalisation n'est pas supportée par votre navigateur.");
+    return;
+  }
+  navigator.geolocation.getCurrentPosition(onPosition, function () {
+    showMessage("⚠️ Impossible de récupérer votre position. Vérifiez que la localisation est autorisée, puis rechargez la page.");
+  }, { timeout: 15000, maximumAge: 600000 });
+});
+
+function showMessage(text) {
+  document.getElementById("content").innerHTML = '<div class="status">' + text + "</div>";
+}
+
+function onPosition(position) {
+  const lat = position.coords.latitude;
+  const lon = position.coords.longitude;
+  getCityName(lat, lon, function (city) {
+    state.city = city;
+    document.getElementById("place").textContent = "📍 " + city;
+    const url = "https://api.met.no/weatherapi/locationforecast/2.0/compact?lat=" +
+      lat.toFixed(4) + "&lon=" + lon.toFixed(4);
+    fetch(url)
+      .then(function (r) {
+        if (!r.ok) throw new Error("service météo indisponible (" + r.status + ")");
+        return r.json();
+      })
+      .then(processWeather)
+      .catch(function (err) {
+        showMessage("⚠️ Erreur météo : " + err.message);
+      });
+  });
+}
+
+function getCityName(lat, lon, callback) {
+  const url = "https://nominatim.openstreetmap.org/reverse?lat=" + lat + "&lon=" + lon + "&format=json";
+  fetch(url)
+    .then(function (r) { return r.json(); })
+    .then(function (d) {
+      const a = (d && d.address) || {};
+      callback(a.city || a.town || a.village || a.municipality || "Votre position");
+    })
+    .catch(function () { callback("Votre position"); });
+}
+
+// ---------- Données météo ----------
+function processWeather(data) {
+  if (!data.properties || !data.properties.timeseries || !data.properties.timeseries.length) {
+    showMessage("⚠️ Données météo non disponibles.");
+    return;
+  }
+
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  tomorrow.setHours(0, 0, 0, 0);
+
+  const forecast = data.properties.timeseries.filter(function (item) {
+    const d = new Date(item.time);
+    return d.getFullYear() === tomorrow.getFullYear() &&
+           d.getMonth() === tomorrow.getMonth() &&
+           d.getDate() === tomorrow.getDate() &&
+           d.getHours() >= 2 && d.getHours() <= 7;
+  }).sort(function (a, b) { return new Date(a.time) - new Date(b.time); });
+
+  if (!forecast.length) {
+    showMessage("⚠️ Aucune prévision disponible entre 2h et 7h.");
+    return;
+  }
+
+  state.forecast = forecast;
+  state.date = tomorrow.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" });
+  render();
+}
+
+// ---------- Évaluation du risque (même logique qu'avant) ----------
+function assessRisk(forecast) {
+  const env = ENVIRONMENTS[currentEnv];
+  let level = 0;
+  let criticalTime = null;
+  let minTemp = 100, maxHum = 0, minWind = 100;
+
+  forecast.forEach(function (item) {
+    const d = item.data.instant.details;
+    const temp = d.air_temperature + env.temp;
+    const hum = Math.min(100, d.relative_humidity + env.hum);
+    const wind = d.wind_speed * 3.6;
+
+    if (temp < minTemp) minTemp = temp;
+    if (hum > maxHum) maxHum = hum;
+    if (wind < minWind) minWind = wind;
+
+    if (temp < 0 && hum > 80) {
+      level = 3; criticalTime = item.time;
+    } else if (temp < 1) {
+      if (level < 2) { level = 2; criticalTime = item.time; }
+    } else if (temp <= 3 && hum >= 80 && wind <= 15) {
+      if (level < 1) { level = 1; criticalTime = item.time; }
+    }
+  });
+  return { level: level, minTemp: minTemp, maxHum: maxHum, minWind: minWind, criticalTime: criticalTime };
+}
+
+// ---------- Affichage ----------
+const VERDICTS = {
+  0: "Pas de risque de givre",
+  1: "Givre possible",
+  2: "Risque important de givre",
+  3: "Alerte givre"
+};
+
+function iconSvg(level) {
+  if (level === 0) {
+    return '<svg class="icon" viewBox="0 0 96 96" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round">' +
+      '<circle cx="48" cy="48" r="16" fill="currentColor"/>' +
+      '<path d="M48 12v10M48 74v10M12 48h10M74 48h10M22.5 22.5l7 7M66.5 66.5l7 7M22.5 73.5l7-7M66.5 29.5l7-7"/></svg>';
+  }
+  return '<svg class="icon" viewBox="0 0 96 96" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round">' +
+    '<path d="M48 10v76M15 29l66 38M15 67l66-38"/>' +
+    '<path d="M40 16l8 8 8-8M40 80l8-8 8 8M12 40l11 3-3 11M84 56l-11-3 3-11M12 56l11-3-3-11M84 40l-11 3 3 11" stroke-width="4"/></svg>';
+}
+
+function fmtHour(iso) {
+  const d = new Date(iso);
+  return d.getHours() + "h";
+}
+
+function render() {
+  if (!state.forecast) return;
+  const forecast = state.forecast;
+  const risk = assessRisk(forecast);
+  const env = ENVIRONMENTS[currentEnv];
+
+  document.body.setAttribute("data-level", risk.level);
+
+  // Prévision la plus proche de 6h
+  const target = new Date(); target.setDate(target.getDate() + 1); target.setHours(6, 0, 0, 0);
+  const at6 = forecast.reduce(function (p, c) {
+    return Math.abs(new Date(p.time) - target) < Math.abs(new Date(c.time) - target) ? p : c;
+  });
+  const d6 = at6.data.instant.details;
+  const cloud = d6.cloud_area_fraction !== undefined ? Math.round(d6.cloud_area_fraction) + "%" : "–";
+
+  const advice = risk.level === 0
+    ? "Rien de particulier à prévoir pour votre pare-brise et vos plantes."
+    : "Pensez à protéger votre pare-brise et vos plantes.";
+
+  const envNote = currentEnv !== "general"
+    ? '<div class="env-note">Ajusté pour : ' + env.name + "</div>" : "";
+
+  let strip = "";
+  forecast.forEach(function (item) {
+    const t = item.data.instant.details.air_temperature + env.temp;
+    strip += "<div>" + fmtHour(item.time) + "<b>" + t.toFixed(0) + "°</b></div>";
+  });
+
+  document.getElementById("content").innerHTML =
+    '<div class="hero">' +
+      iconSvg(risk.level) +
+      '<div class="when">' + state.date + " au matin</div>" +
+      '<div class="verdict">' + VERDICTS[risk.level] + "</div>" +
+      '<div class="advice">' + advice + "</div>" + envNote +
+    "</div>" +
+    '<div class="cards">' +
+      '<div class="card-title">Prévision vers 6h</div>' +
+      '<div class="card"><div class="label">Température</div><div class="value">' + (d6.air_temperature + env.temp).toFixed(1) + "°C</div></div>" +
+      '<div class="card"><div class="label">Humidité</div><div class="value">' + Math.min(100, Math.round(d6.relative_humidity + env.hum)) + "%</div></div>" +
+      '<div class="card"><div class="label">Vent</div><div class="value">' + Math.round(d6.wind_speed * 3.6) + " km/h</div></div>" +
+      '<div class="card"><div class="label">Nuages</div><div class="value">' + cloud + "</div></div>" +
+    "</div>" +
+    '<div class="strip">' + strip + "</div>";
+}
+
+// ---------- Panneau de réglages ----------
+function setupSheet() {
+  const sheet = document.getElementById("sheet");
+  const overlay = document.getElementById("overlay");
+
+  function open() { sheet.classList.add("open"); overlay.classList.add("open"); markSelected(); }
+  function close() { sheet.classList.remove("open"); overlay.classList.remove("open"); }
+  function markSelected() {
+    document.querySelectorAll(".opt").forEach(function (b) {
+      b.classList.toggle("selected", b.getAttribute("data-env") === currentEnv);
+    });
+  }
+
+  document.getElementById("gear").addEventListener("click", open);
+  overlay.addEventListener("click", close);
+  document.querySelectorAll(".opt").forEach(function (b) {
+    b.addEventListener("click", function () {
+      currentEnv = b.getAttribute("data-env");
+      try { localStorage.setItem("givre_env", currentEnv); } catch (e) {}
+      markSelected();
+      render();
+      setTimeout(close, 200);
+    });
+  });
+}
+</script>
+</body>
+</html>
